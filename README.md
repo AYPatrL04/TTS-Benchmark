@@ -168,15 +168,23 @@ The boundary experiment uses the same pipeline with:
 experiments/boundary_metric_v1/inputs/emotion_boundary_cases.csv
 ```
 
-## Upload To GitHub
+## Future Works
 
-After checking the repository:
+The current composite main metric should be treated as a reference target for
+later surrogate metric search. A useful next step is to fit one or more
+low-compute surrogate metrics against `main_metric_0_1`, then select candidates
+by ranking agreement, correlation, and boundary-case robustness.
 
-```powershell
-git init
-git branch -M main
-git remote add origin https://github.com/AYPatrL04/TTS-Benchmark.git
-git add .
-git commit -m "Add emotion-aware TTS benchmark"
-git push -u origin main
-```
+Candidate surrogate directions:
+
+- ASR-light features such as duration, speech rate, silence ratio, and ASR
+  confidence;
+- acoustic features such as loudness, spectral flatness, pitch/energy dynamics,
+  mel distance, or multi-resolution STFT distance;
+- lightweight speaker or emotion embeddings;
+- codec-token likelihood/SIM if the TTS model exposes codec tokens or logits.
+
+The main metric itself is also provisional. If a stronger evaluation method is
+added later, such as a better ASR model, a learned MOS predictor, multiple
+emotion/style models, or a small human calibration set, the main metric should
+be updated and the surrogate search should be rerun against the new reference.

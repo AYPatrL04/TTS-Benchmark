@@ -8,12 +8,12 @@ The SIM-like signal here is not a production speaker-SIM metric with a separate 
 
 | candidate | Pearson | Spearman | Kendall | pairwise acc. | MAE | top5 | bottom5 | notes |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `ridge_sim_ser_plus_low_dsp_loo` | 0.956729 | 0.923419 | 0.778462 | 0.889231 | 0.030452 | 0.800000 | 0.600000 | LOOCV ridge |
+| `ridge_sim_ser_plus_low_dsp_loo` | 0.955335 | 0.928205 | 0.790769 | 0.895385 | 0.032165 | 0.800000 | 0.600000 | fold-pure LOOCV ridge |
 | `sim_ser_target_prob` | 0.888542 | 0.877607 | 0.747692 | 0.873846 | 0.258240 | 0.800000 | 0.600000 |  |
-| `lodo_sim_ser_plus_low_dsp` | 0.848784 | 0.822946 | 0.667731 | 0.830769 | 0.045037 | 0.800000 | 0.600000 | leave-one-dataset-out |
-| `ridge_sim_plus_low_dsp_loo` | 0.246675 | 0.330598 | 0.212308 | 0.606154 | 0.129734 | 0.000000 | 0.200000 | LOOCV ridge |
-| `lodo_sim_plus_low_dsp` | 0.371043 | 0.302891 | 0.229416 | 0.600000 | 0.141363 | 0.600000 | 0.400000 | leave-one-dataset-out |
-| `ridge_sim_centroid_loo` | 0.072682 | 0.169231 | 0.120000 | 0.560000 | 0.135550 | 0.000000 | 0.200000 | LOOCV ridge |
+| `lodo_sim_ser_plus_low_dsp` | 0.564751 | 0.389219 | 0.331526 | 0.658462 | 0.100571 | 0.400000 | 0.600000 | fold-pure leave-one-dataset-out |
+| `lodo_sim_plus_low_dsp` | 0.361495 | 0.322739 | 0.238678 | 0.610769 | 0.157661 | 0.400000 | 0.400000 | fold-pure leave-one-dataset-out |
+| `ridge_sim_plus_low_dsp_loo` | 0.150595 | 0.306667 | 0.187692 | 0.593846 | 0.141427 | 0.000000 | 0.200000 | fold-pure LOOCV ridge |
+| `ridge_sim_centroid_loo` | -0.032892 | 0.132991 | 0.083077 | 0.541538 | 0.148101 | 0.000000 | 0.200000 | fold-pure LOOCV ridge |
 | `sim_target_cos_loo` | -0.261845 | -0.158291 | -0.101538 | 0.449231 | 0.205940 | 0.000000 | 0.200000 |  |
 | `sim_target_rank_loo` | -0.192955 | -0.192190 | -0.149146 | 0.435385 | 0.353694 | 0.200000 | 0.200000 |  |
 | `sim_target_softmax_loo` | -0.243915 | -0.241026 | -0.187692 | 0.406154 | 0.535562 | 0.000000 | 0.200000 |  |
@@ -25,8 +25,8 @@ The SIM-like signal here is not a production speaker-SIM metric with a separate 
 | --- | ---: | ---: | ---: |
 | `main_metric_current_pipeline` | 32.969806 | 1.268069 | 1.000000 |
 | `low_dsp_base_plus_v3_features` | 1.968207 | 0.075700 | 0.059697 |
-| `sim_like_embedding_only` | 3.900485 | 0.150019 | 0.118305 |
-| `sim_like_plus_low_dsp` | 4.675101 | 0.179812 | 0.141799 |
+| `sim_like_embedding_only` | 3.809624 | 0.146524 | 0.115549 |
+| `sim_like_plus_low_dsp` | 4.446232 | 0.171009 | 0.134858 |
 
 ## Takeaway
 

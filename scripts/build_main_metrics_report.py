@@ -60,8 +60,17 @@ def main() -> None:
             if math.isfinite(prosody) and math.isfinite(style_emotion_prob)
             else math.nan
         )
-        rows.append(
-            {
+        metadata_fields = (
+            "text_id",
+            "tts_system",
+            "model",
+            "voice",
+            "source_config",
+            "is_boundary",
+            "boundary_type",
+            "description",
+        )
+        result = {
                 "id": item_id,
                 "case_type": irow.get("case_type", ""),
                 "expected_metric_challenge": irow.get("expected_metric_challenge", ""),
@@ -90,7 +99,9 @@ def main() -> None:
                 "silence_ratio": irow.get("silence_ratio", ""),
                 "asr_transcript": irow.get("asr_transcript", ""),
             }
-        )
+        for field in metadata_fields:
+            result[field] = irow.get(field, "") or srow.get(field, "") or nrow.get(field, "")
+        rows.append(result)
 
     args.output_csv.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0].keys()) if rows else []

@@ -1,0 +1,7 @@
+text_id,is_boundary,boundary_type,target_emotion,text,description
+normal_01,0,none,neutral,"Please send the final report before the meeting starts tomorrow.","Clear neutral narration with moderate speed and minimal emotion."
+normal_02,0,none,neutral,"The garden was quiet after the rain, and the air felt cool.","Clear neutral narration with moderate speed and minimal emotion."
+normal_03,0,none,neutral,"I left the blue notebook beside the lamp in the study.","Clear neutral narration with moderate speed and minimal emotion."
+boundary_digits,1,digits_and_address,neutral,"The access code is A seventeen B nine, and the address is four zero five North Lake Drive.","Clear neutral narration with careful pronunciation of every letter and number."
+boundary_acronyms,1,technical_acronyms,neutral,"The GPU API uses HTTPS, JSON, and UTF eight in the final SDK release.","Clear neutral technical narration with every acronym articulated distinctly."
+boundary_tongue_twister,1,fast_tongue_twister,neutral,"Red leather, yellow leather, unique New York, repeated twice without rushing.","Clear neutral narration at a moderate pace with precise articulation."

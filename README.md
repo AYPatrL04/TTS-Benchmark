@@ -9,7 +9,8 @@ The repository contains:
 - automatic metric scripts for intelligibility, acoustic sanity, emotion, and
   prosody;
 - a vector-first provisional teacher and an experimental `0-1` scalar;
-- two reproducible experiment outputs with generated audio.
+- four reproducible experiment outputs with generated audio, including a
+  shared-text multi-system audit and an automatic emotion-consensus study.
 
 ## Repository Layout
 
@@ -23,6 +24,8 @@ TTS-Benchmark/
   experiments/
     parler_emotion_v1/
     boundary_metric_v1/
+    multisystem_generalization_v1/
+    automatic_emotion_consensus_v1/
   scripts/
     generate_with_parler_emotion.py
     evaluate_wer_with_transformers_whisper.py
@@ -39,24 +42,24 @@ TTS-Benchmark/
   requirements-optional.txt
 ```
 
-## Main Metric (Provisional Teacher V2)
+## Main Metric (Automatic Teacher V3)
 
-The primary output is the component vector `(I, Q, E, prosody diagnostics,
-sanity flags)`. A normalized scalar is retained only as a provisional target for
-experiments:
+The primary output is the component vector `(I, E, acoustic sanity, model
+disagreement, prosody diagnostics)`. The current 52-clip experiment combines
+emotion2vec, SUPERB SER, and MSP-Dim VAD. A scalar is retained only as an
+automatic surrogate-fitting target:
 
 ```text
 I = 1 - normalized_WER
-E = target_emotion_probability
-with learned MOS: provisional_teacher_v2 = 0.55*I + 0.35*E + 0.10*Q
-without learned MOS: provisional_teacher_v2 = (0.55*I + 0.35*E) / 0.90
+E = median(emotion2vec_target_P, SUPERB_target_P, MSP_VAD_target_P)
+Main_auto_v3 = I^0.55 * E^0.35 * acoustic_sanity^0.10
 ranking_eligible = I >= 0.70 and acoustic_sanity_score >= 0.50
 ```
 
 Details are in:
 
 ```text
-docs/metric_design.md
+docs/main_and_surrogate_metric_comparison.md
 ```
 
 ## Included Experiments
@@ -88,6 +91,38 @@ Key output:
 
 ```text
 experiments/boundary_metric_v1/combined/boundary_scored_main_metric.csv
+```
+
+### `experiments/multisystem_generalization_v1`
+
+Cross-system overfitting audit:
+
+- 18 generated samples from Parler-TTS Mini, Bark Small, and Windows SAPI Zira;
+- the same three regular and three boundary texts for every system;
+- fold-pure leave-system-out, leave-text-out, and leave-boundary-condition-out
+  surrogate validation;
+- a randomized blind-listening set and human rating template.
+
+Key report:
+
+```text
+experiments/multisystem_generalization_v1/analysis/generalization_report.md
+```
+
+### `experiments/automatic_emotion_consensus_v1`
+
+Automatic-only emotion and surrogate audit:
+
+- 52 clips across Parler-TTS, Bark, and Windows SAPI;
+- emotion2vec, SUPERB SER, and MSP-Dim VAD consensus;
+- eight same-text/same-speaker controlled emotion-intensity clips;
+- LOOCV, leave-dataset-out, and leave-system-out surrogate validation;
+- measured warm per-clip cost and speedup.
+
+Key report:
+
+```text
+experiments/automatic_emotion_consensus_v1/analysis/automatic_metric_report.md
 ```
 
 ## Setup

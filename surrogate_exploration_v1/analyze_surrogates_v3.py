@@ -359,6 +359,10 @@ def add_derived_features(row: dict[str, float]) -> None:
 
 
 def load_rows_with_audio_features() -> tuple[list[dict[str, float]], float]:
+    if not FEATURE_CSV.exists():
+        import analyze_surrogates
+
+        analyze_surrogates.main()
     base_rows: dict[tuple[str, str], dict[str, float]] = {}
     with FEATURE_CSV.open(newline="", encoding="utf-8-sig") as handle:
         for raw in csv.DictReader(handle):

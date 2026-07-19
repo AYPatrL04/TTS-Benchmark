@@ -1,0 +1,19 @@
+id,text_id,tts_system,voice,is_boundary,boundary_type,main_metric_0_1,intelligibility,emotion_teacher,acoustic_sanity,fixed_low_dsp,ser_target_prob,loso_low_dsp_ridge,loso_neural_dsp_ridge,loto_low_dsp_ridge,loto_neural_dsp_ridge,lobc_low_dsp_ridge,lobc_neural_dsp_ridge
+bark__boundary_acronyms,boundary_acronyms,bark,v2/en_speaker_6,1,technical_acronyms,0.999286,1.000000,0.998164,1.000000,0.491250,0.998164,0.790831,0.861608,1.000000,1.000000,0.884052,0.898674
+bark__normal_02,normal_02,bark,v2/en_speaker_6,0,none,0.999240,1.000000,0.998047,1.000000,0.688702,0.998047,0.850989,0.883725,0.867130,0.892523,0.860531,0.863347
+parler__boundary_digits,boundary_digits,parler,Jenna,1,digits_and_address,0.975307,1.000000,0.936503,1.000000,0.674609,0.936503,0.882133,0.891463,0.845642,0.884451,0.872075,0.879099
+bark__normal_03,normal_03,bark,v2/en_speaker_6,0,none,0.942853,1.000000,0.853051,1.000000,0.873237,0.853051,0.788676,0.865027,0.795319,0.853568,0.760335,0.819776
+bark__boundary_digits,boundary_digits,bark,v2/en_speaker_6,1,digits_and_address,0.917403,0.875000,0.984037,1.000000,0.677926,0.984037,0.819674,0.913881,0.844079,0.892534,0.871494,0.884797
+sapi__normal_02,normal_02,sapi,Microsoft Zira Desktop,0,none,0.910061,1.000000,0.768729,1.000000,0.918047,0.768730,0.767690,0.807476,0.756534,0.823378,0.736004,0.797028
+parler__normal_02,normal_02,parler,Jenna,0,none,0.898731,1.000000,0.739594,1.000000,0.689692,0.739594,0.878958,0.874793,0.866653,0.866762,0.859994,0.851186
+bark__boundary_tongue_twister,boundary_tongue_twister,bark,v2/en_speaker_6,1,fast_tongue_twister,0.886819,0.818182,0.994678,0.920659,0.618264,0.994678,0.000000,0.000000,0.922197,0.952939,0.884052,0.900211
+parler__normal_03,normal_03,parler,Jenna,0,none,0.881283,1.000000,0.694727,1.000000,0.650000,0.694727,0.887394,0.853540,0.909723,0.873203,0.881545,0.874926
+bark__normal_01,normal_01,bark,v2/en_speaker_6,0,none,0.856106,0.800000,0.944272,1.000000,0.658362,0.944272,0.861235,0.943172,0.916662,0.949398,0.877005,0.939587
+sapi__boundary_acronyms,boundary_acronyms,sapi,Microsoft Zira Desktop,1,technical_acronyms,0.841336,0.857143,0.816497,1.000000,0.658913,0.816497,0.758731,0.785919,1.000000,0.970979,0.854676,0.861995
+sapi__boundary_digits,boundary_digits,sapi,Microsoft Zira Desktop,1,digits_and_address,0.839338,1.000000,0.586868,1.000000,0.892750,0.586868,0.738859,0.740097,0.742794,0.755852,0.833854,0.824403
+parler__normal_01,normal_01,parler,Jenna,0,none,0.776427,1.000000,0.425097,1.000000,0.895034,0.425097,0.835313,0.789710,0.795366,0.752653,0.748500,0.756199
+sapi__normal_03,normal_03,sapi,Microsoft Zira Desktop,0,none,0.745635,1.000000,0.345919,1.000000,0.822824,0.345919,0.822120,0.739725,0.821154,0.753063,0.787707,0.758330
+sapi__boundary_tongue_twister,boundary_tongue_twister,sapi,Microsoft Zira Desktop,1,fast_tongue_twister,0.718570,1.000000,0.276323,1.000000,0.793783,0.276323,0.838720,0.742232,0.864593,0.765670,0.858860,0.813089
+sapi__normal_01,normal_01,sapi,Microsoft Zira Desktop,0,none,0.713312,1.000000,0.262801,1.000000,0.982907,0.262801,0.730615,0.669610,0.750329,0.687025,0.700787,0.708683
+parler__boundary_tongue_twister,boundary_tongue_twister,parler,Jenna,1,fast_tongue_twister,0.558023,0.818182,0.149201,0.998833,0.994394,0.149201,0.814091,0.749889,0.784034,0.690216,0.823628,0.758111
+parler__boundary_acronyms,boundary_acronyms,parler,Jenna,1,technical_acronyms,0.434918,0.500000,0.332647,1.000000,0.735808,0.332647,0.869045,0.809053,0.981120,0.872597,0.841203,0.794604

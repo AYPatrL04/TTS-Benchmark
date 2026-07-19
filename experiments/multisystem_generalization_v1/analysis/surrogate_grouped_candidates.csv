@@ -1,0 +1,9 @@
+candidate,cost_tier,ingredients,pearson,spearman,kendall_tau_b,pairwise_accuracy,mae,rmse,top3_overlap,top5_overlap,bottom5_overlap,notes
+fixed_low_dsp,low_dsp,see report,-0.474088,-0.512900,-0.372549,0.313725,0.214260,0.250674,0.000000,0.000000,0.000000,no fitted parameters
+ser_target_prob,medium_neural,see report,0.847908,0.884417,0.764706,0.882353,0.184045,0.240049,0.666667,0.600000,1.000000,raw SER signal; directly reused by the teacher
+loso_low_dsp_ridge,low_dsp,see report,-0.099123,0.079463,0.071895,0.535948,0.161561,0.259231,0.333333,0.200000,0.200000,fold-pure grouped ridge; alpha=10
+loso_neural_dsp_ridge,medium_neural,see report,0.109054,0.616099,0.398693,0.699346,0.130764,0.240795,0.333333,0.600000,0.600000,fold-pure grouped ridge; alpha=10
+loto_low_dsp_ridge,low_dsp,see report,0.029183,0.217863,0.131148,0.565359,0.116569,0.167399,0.333333,0.200000,0.400000,fold-pure grouped ridge; alpha=10
+loto_neural_dsp_ridge,medium_neural,see report,0.528186,0.616099,0.424837,0.712418,0.082565,0.126107,0.333333,0.400000,0.600000,fold-pure grouped ridge; alpha=10
+lobc_low_dsp_ridge,low_dsp,see report,0.238664,0.481156,0.354100,0.676471,0.096436,0.143187,0.333333,0.400000,0.400000,fold-pure grouped ridge; alpha=10
+lobc_neural_dsp_ridge,medium_neural,see report,0.609735,0.667699,0.464052,0.732026,0.082202,0.119226,0.333333,0.600000,0.800000,fold-pure grouped ridge; alpha=10

@@ -7,7 +7,7 @@ target is an automatic teacher, not human perceptual truth.
 
 - 26 English clips: 8 regular emotion prompts and 18 boundary cases.
 - One Parler-TTS configuration and largely one speaker.
-- LOOCV, nested feature-selection LOOCV, and leave-dataset-out evaluation.
+- Fold-pure LOOCV, nested feature-selection LOOCV, and leave-dataset-out evaluation.
 - Leave-dataset-out separates regular and boundary sets, but does not hold out a
   TTS system or speaker.
 
@@ -30,17 +30,19 @@ over raw Hz dispersion. Hand-set emotion profiles remain exploratory.
 
 | Candidate | Validation | Tier | Spearman | Kendall | Pairwise acc. | MAE |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
-| SIM/SER + low-DSP ridge | LOOCV | medium neural | 0.923419 | 0.778462 | 0.889231 | 0.030452 |
-| SIM/SER + low-DSP ridge | leave-dataset-out | medium neural | 0.822946 | 0.667731 | 0.830769 | 0.045037 |
+| SIM/SER + low-DSP ridge | fold-pure LOOCV | medium neural | 0.928205 | 0.790769 | 0.895385 | 0.032165 |
+| SIM/SER + low-DSP ridge | fold-pure leave-dataset-out | medium neural | 0.389219 | 0.331526 | 0.658462 | 0.100571 |
 | SER target probability | direct | medium neural | 0.877607 | 0.747692 | 0.873846 | 0.258240 |
 | emotion DSP/text ridge | LOOCV | low DSP | 0.540513 | 0.396923 | 0.698462 | 0.095619 |
 | nested subset ridge | nested LOOCV | low DSP | 0.485812 | 0.316923 | 0.658462 | 0.106340 |
 | raw SIM centroid ridge | LOOCV | medium neural | 0.169231 | 0.120000 | 0.560000 | 0.135550 |
 
 The strongest candidate uses the same SER model family as the teacher. Its high
-agreement is therefore teacher replication and should not be described as
-independent perceptual validation. Raw SIM-like embedding similarity alone is
-not useful on this sample.
+LOOCV agreement is therefore teacher replication and should not be described as
+independent perceptual validation. Neural reference features and ridge fitting
+are rebuilt inside every outer fold. The large drop under fold-pure
+leave-dataset-out validation shows weak subset transfer. Raw SIM-like embedding
+similarity alone is not useful on this sample.
 
 ## Cost
 
@@ -50,8 +52,8 @@ Latest local CUDA timing for 26 clips:
 | --- | ---: | ---: |
 | full teacher pipeline | 1.268069 | 1.0x |
 | low-DSP | 0.075700 | 16.8x |
-| SIM-like embedding | 0.150019 | 8.5x |
-| SIM/SER + low-DSP | 0.179812 | 7.1x |
+| SIM-like embedding | 0.146524 | 8.7x |
+| SIM/SER + low-DSP | 0.171009 | 7.4x |
 
 Use low-DSP as a failure detector. Use SIM/SER + low-DSP only as an experimental
 ranker with fallback to the full pipeline. Neither is ready as a reward or final

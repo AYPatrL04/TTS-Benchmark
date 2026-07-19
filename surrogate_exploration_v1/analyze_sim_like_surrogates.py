@@ -19,8 +19,8 @@ from analyze_surrogates_v2 import (
     evaluate,
     mean,
     pearson,
-    ridge_leave_dataset_out,
-    ridge_loo,
+    ridge_fit,
+    ridge_predict,
     spearman,
     topk_overlap,
     write_csv,
@@ -259,6 +259,89 @@ def pairwise_consistency(rows: list[dict[str, float]], embeddings: np.ndarray) -
     return scores
 
 
+def sim_features_for_query(
+    rows: list[dict[str, float]],
+    embeddings: np.ndarray,
+    query_idx: int,
+    reference_indices: list[int],
+) -> dict[str, float]:
+    query = embeddings[query_idx]
+    sims: dict[str, float] = {}
+    for emotion in EMOTIONS:
+        vectors = [
+            embeddings[idx]
+            for idx in reference_indices
+            if str(rows[idx].get("target_emotion", "")).lower() == emotion
+        ]
+        sims[emotion] = cosine(query, centroid(vectors)) if vectors else 0.0
+
+    target = str(rows[query_idx].get("target_emotion", "neutral")).lower()
+    target_value = sims.get(target, 0.0)
+    other_max = max((value for emotion, value in sims.items() if emotion != target), default=0.0)
+    sorted_sims = sorted(sims.items(), key=lambda item: item[1], reverse=True)
+    rank = next((idx for idx, (emotion, _value) in enumerate(sorted_sims) if emotion == target), len(sorted_sims) - 1)
+    sim_values = np.asarray(list(sims.values()), dtype="float64")
+    exp_values = np.exp((sim_values - np.max(sim_values)) * 20.0)
+    target_idx = list(sims.keys()).index(target) if target in sims else 0
+    target_soft = float(exp_values[target_idx] / max(float(exp_values.sum()), 1e-12))
+
+    same = [
+        cosine(query, embeddings[idx])
+        for idx in reference_indices
+        if str(rows[idx].get("target_emotion", "")).lower() == target
+    ]
+    diff = [
+        cosine(query, embeddings[idx])
+        for idx in reference_indices
+        if str(rows[idx].get("target_emotion", "")).lower() != target
+    ]
+    consistency = 0.5 if not same or not diff else clamp(0.5 + (mean(same) - mean(diff)) / 0.10)
+
+    return {
+        "sim_target_cos_loo": clamp((target_value + 1.0) / 2.0),
+        "sim_target_margin_loo": clamp(0.5 + (target_value - other_max) / 0.10),
+        "sim_target_rank_loo": clamp(1.0 - rank / max(len(sorted_sims) - 1, 1)),
+        "sim_target_softmax_loo": clamp(target_soft),
+        "sim_pairwise_consistency": consistency,
+    }
+
+
+def neural_cv_predictions(
+    rows: list[dict[str, float]],
+    embeddings: np.ndarray,
+    target_probs: list[float],
+    target: list[float],
+    features: list[str],
+    test_folds: list[list[int]],
+    alpha: float = 5e-2,
+) -> list[float]:
+    predictions = [math.nan] * len(rows)
+    all_indices = list(range(len(rows)))
+    for test_idx in test_folds:
+        test_set = set(test_idx)
+        train_idx = [idx for idx in all_indices if idx not in test_set]
+        train_rows = []
+        for idx in train_idx:
+            item = dict(rows[idx])
+            item.update(sim_features_for_query(rows, embeddings, idx, [ref for ref in train_idx if ref != idx]))
+            item["sim_ser_target_prob"] = target_probs[idx]
+            train_rows.append(item)
+        test_rows = []
+        for idx in test_idx:
+            item = dict(rows[idx])
+            item.update(sim_features_for_query(rows, embeddings, idx, train_idx))
+            item["sim_ser_target_prob"] = target_probs[idx]
+            test_rows.append(item)
+
+        x_train = [[row[name] for name in features] for row in train_rows]
+        x_test = [[row[name] for name in features] for row in test_rows]
+        coef, mean_x, std_x = ridge_fit(x_train, [target[idx] for idx in train_idx], alpha=alpha)
+        fold_predictions = ridge_predict(x_test, coef, mean_x, std_x)
+        for idx, prediction in zip(test_idx, fold_predictions):
+            predictions[idx] = prediction
+    return predictions
+
+
 def build_rows(rows: list[dict[str, float]], sim_features: dict[str, list[float]], target_probs: list[float]) -> list[dict[str, float]]:
     out = []
     for idx, row in enumerate(rows):
@@ -367,11 +450,14 @@ def main() -> None:
 
     for name, features in ridge_specs.items():
         if name.startswith("lodo_"):
-            preds = ridge_leave_dataset_out(rows, target, features, alpha=5e-2)
-            notes = "leave-one-dataset-out"
+            datasets = sorted({str(row["dataset"]) for row in rows})
+            folds = [[idx for idx, row in enumerate(rows) if row["dataset"] == dataset] for dataset in datasets]
+            preds = neural_cv_predictions(rows, embeddings, target_probs, target, features, folds)
+            notes = "fold-pure leave-one-dataset-out"
         else:
-            preds = ridge_loo(rows, target, features, alpha=5e-2)
-            notes = "LOOCV ridge"
+            folds = [[idx] for idx in range(len(rows))]
+            preds = neural_cv_predictions(rows, embeddings, target_probs, target, features, folds)
+            notes = "fold-pure LOOCV ridge"
         prediction_map[name] = preds
         candidates.append(evaluate(name, preds, target, "medium_neural", "+".join(features), notes))
 

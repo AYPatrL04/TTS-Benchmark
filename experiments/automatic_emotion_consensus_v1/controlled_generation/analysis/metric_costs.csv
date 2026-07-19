@@ -1,0 +1,7 @@
+metric,warm_seconds_per_clip,speedup_vs_main,ingredients,measurement_note
+main_auto_v3,0.7712531625121907,1.0,Whisper+sanity+emotion2vec+SUPERB+MSP-Dim,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark
+low_dsp_ridge,0.11480110000411514,6.718168749990587,waveform/text DSP,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark
+e2v_plus_dsp_ridge,0.18666648751241155,4.131717336037138,emotion2vec+DSP,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark
+superb_plus_dsp_ridge,0.15100066250306554,5.107614428489895,SUPERB+DSP,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark
+vad_plus_dsp_ridge,0.13419731250905897,5.7471580323944815,MSP-Dim+DSP,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark
+all_emotion_plus_dsp_ridge,0.24226226251630578,3.1835464364173536,three emotion models+DSP,DSP/emotion measured on 44 clips; Whisper/sanity reused from prior 26-clip same-machine benchmark

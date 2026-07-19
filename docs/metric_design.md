@@ -5,126 +5,92 @@
 The benchmark is vector-first. Every valid sample reports:
 
 ```text
-(I, Q, E, prosody diagnostics, acoustic sanity flags)
+I: automatic intelligibility in [0,1]
+E: robust target-emotion consensus in [0,1]
+S: acoustic sanity in [0,1]
+D: emotion-model disagreement in [0,1]
+Main_auto_v3: provisional automatic scalar in [0,1]
+ranking_eligible: hard screening status
 ```
 
-`main_metric_0_1` is an experimental scalar named
-`provisional_teacher_v2`. It is useful for pipeline and surrogate experiments,
-but is not a human-calibrated ground truth, MOS, or publication-grade model
-ranking metric.
+Higher is better for `I`, `E`, `S`, and `Main_auto_v3`. Lower disagreement `D`
+means the emotion evidence is more consistent. None of these values is a human
+MOS or a human-confirmed emotion label.
 
-Missing required values produce `metric_status=invalid`; missing values are
-never converted to zero. Reports include valid-sample coverage.
+## Intelligibility
 
-## Components
-
-### Intelligibility
+Whisper `tiny.en` transcribes the generated audio after reference and hypothesis
+normalization:
 
 ```text
-I = clip(1 - normalized_WER, 0, 1)
+WER = (substitutions + deletions + insertions) / reference_word_count
+I   = clip(1 - WER, 0, 1)
 ```
 
-WER is computed from a Whisper transcript after text normalization. CER remains
-in `cer_diagnostic_0_1`, but is not blended with WER because both derive from
-the same ASR transcript. The output also retains transcript and word edits for
-error analysis.
+CER is retained only as a diagnostic because it comes from the same transcript.
 
-This measures TTS errors, ASR errors, and normalization errors together. The
-current `whisper-tiny.en` result therefore needs stronger or heterogeneous ASR
-validation before cross-system use.
+## Emotion Consensus
 
-### Quality and Acoustic Sanity
-
-If a learned MOS column is present:
+The emotion component uses target probabilities from emotion2vec and SUPERB,
+plus a fixed-anchor interpretation of MSP-Dim arousal/dominance/valence:
 
 ```text
-Q = clip((utmos_score_1_5 - 1) / 4, 0, 1)
-quality_component_source = learned_mos
+P_vad(e) = softmax_e(-0.5 * sum_k ((vad_k - anchor_e,k)/scale_k)^2)
+E = median(P_emotion2vec(target), P_SUPERB(target), P_vad(target))
+D = max(P_emotion2vec, P_SUPERB, P_vad)
+  - min(P_emotion2vec, P_SUPERB, P_vad)
 ```
 
-Without learned MOS:
+The VAD anchors are:
+
+| emotion | arousal | dominance | valence |
+| --- | ---: | ---: | ---: |
+| neutral | 0.40 | 0.50 | 0.50 |
+| happy | 0.70 | 0.70 | 0.75 |
+| angry | 0.75 | 0.70 | 0.25 |
+| sad | 0.30 | 0.35 | 0.30 |
+
+The per-axis scales are `(0.25, 0.25, 0.30)`. The anchors are fixed design
+hypotheses and are not fitted to the 52 evaluation clips.
+
+## Acoustic Sanity
 
 ```text
-quality_component_source = acoustic_sanity_fallback
+penalty = 0.30*loudness_penalty
+        + 0.30*silence_penalty
+        + 0.20*clipping_penalty
+        + 0.15*spectral_flatness_penalty
+        + 0.05*short_duration_penalty
+S = clip(1 - penalty, 0, 1)
 ```
 
-The fallback checks gross loudness, silence, clipping, duration, and spectral
-flatness failures. It is deliberately named acoustic sanity, not naturalness.
-It cannot rank robotic speech, vocoder artifacts, reverberation, or subtle
-prosody problems reliably. It is reported and used by `ranking_eligible`, but
-does not add positive weight to the scalar.
+This detects gross waveform failures only. It must not be named naturalness or
+interpreted as predicted MOS.
 
-### Emotion
+## Composite
 
 ```text
-E = clip(target_emotion_prob, 0, 1)
+Main_auto_v3 = I^0.55 * E^0.35 * S^0.10
+ranking_eligible = (I >= 0.70) and (S >= 0.50)
 ```
 
-The previous hard argmax-match bonus was removed because it duplicated the same
-classifier evidence and introduced a discontinuous score jump. The current
-SUPERB model is an uncalibrated IEMOCAP SER teacher applied out of domain to
-synthetic speech. Its probability is retained for experimentation, not treated
-as human emotion agreement.
+The geometric form limits cross-component compensation. The exponents and
+eligibility thresholds are provisional, automatically assessed design choices.
+High `D` should be surfaced with the score and prevents a strong emotion claim.
 
-### Prosody
+## Diagnostics
 
-Prosody is diagnostic and excluded from the scalar. Pitch variation is measured
-in semitones relative to the utterance median, with standard deviation, median
-absolute deviation, and p90-p10 range. Energy variation, voiced ratio, speaking
-rate, and pause behavior remain separate features.
+CER, raw transcripts, all class probabilities, VAD, semitone F0 variation,
+energy variation, voiced ratio, silence, speaking rate, and boundary type remain
+separate fields. They are not silently compressed into the Main scalar.
 
-This replaces speaker-dependent Hz-only activity as the preferred description.
-Emotion targets must eventually be learned as conditional distributions from
-human speech instead of hand-set point targets.
+## Missing Values
 
-## Provisional Scalar
+Missing required model output makes a sample invalid. It must not be converted
+to zero. Aggregates must report valid coverage.
 
-```text
-with learned MOS:
-teacher_v2 = clip(0.55 * I + 0.35 * E + 0.10 * Q, 0, 1)
+## Implementation
 
-without learned MOS:
-teacher_v2 = clip((0.55 * I + 0.35 * E) / 0.90, 0, 1)
-
-ranking_eligible = (I >= 0.70) and (acoustic_sanity >= 0.50)
-```
-
-The weights are not human-calibrated. `ranking_eligible` is a hard screening
-constraint, not a claim that 0.70 is a perceptual acceptability threshold.
-Where different failure modes matter, compare the component vector or Pareto
-front rather than relying on the scalar.
-
-## Output Fields
-
-| Field | Meaning |
-| --- | --- |
-| `metric_version` | `provisional_teacher_v2` |
-| `metric_status` | `valid_provisional` or `invalid` |
-| `metric_missing_fields` | missing required inputs |
-| `main_metric_0_1` | provisional teacher scalar |
-| `ranking_eligible` | hard intelligibility/sanity screen |
-| `intelligibility_component_0_1` | `I` |
-| `quality_component_0_1` | learned MOS or sanity diagnostic |
-| `quality_component_source` | learned MOS or sanity fallback |
-| `emotion_component_0_1` | `E` |
-| `cer_diagnostic_0_1` | CER, not in scalar |
-| `prosody_diagnostic_0_1` | activity descriptor, not in scalar |
-| `teacher_active_weights` | weights used for the current row |
-
-## Validation Required
-
-The current data contain 26 clips from one Parler-TTS configuration and largely
-one speaker. Before using the metric for model ranking or reward learning:
-
-1. Collect human intelligibility, naturalness, emotion-match, and overall
-   preference labels with multiple raters.
-2. Add structurally different TTS systems, speakers, texts, natural failures,
-   and controlled degradations.
-3. Calibrate ASR, MOS, and SER outputs on synthetic speech.
-4. Learn a non-negative monotonic composite mapping from human judgments.
-5. Hold out complete TTS systems and texts for final evaluation.
-
-Likely quality extensions are calibrated UTMOS plus defect dimensions from a
-model such as NISQA. Likely emotion extensions are heterogeneous SER models and
-continuous valence-arousal predictions. These are future integrations, not
-current measured components.
+- Main and surrogate formulas: `scripts/analyze_automatic_emotion_consensus.py`
+- Neural emotion inference: `scripts/evaluate_automatic_emotion_models.py`
+- Full design and result comparison: `docs/main_and_surrogate_metric_comparison.md`

@@ -77,6 +77,73 @@ class ExperimentOutputTests(unittest.TestCase):
                 self.assertGreaterEqual(float(row["pairwise_accuracy"]), 0.0)
                 self.assertLessEqual(float(row["pairwise_accuracy"]), 1.0)
 
+    def test_multisystem_grouped_outputs_and_blinding(self) -> None:
+        base = ROOT / "experiments" / "multisystem_generalization_v1"
+        manifest = read_csv(base / "inputs" / "multisystem_manifest.csv")
+        self.assertEqual(len(manifest), 18)
+        self.assertEqual({row["tts_system"] for row in manifest}, {"parler", "bark", "sapi"})
+        self.assertEqual(sum(int(row["is_boundary"]) for row in manifest), 9)
+
+        by_text: dict[str, set[str]] = {}
+        for row in manifest:
+            by_text.setdefault(row["text_id"], set()).add(row["tts_system"])
+            audio = ROOT / row["audio_path"]
+            self.assertTrue(audio.is_file(), audio)
+            self.assertGreater(audio.stat().st_size, 44, audio)
+        self.assertEqual(len(by_text), 6)
+        self.assertTrue(all(systems == {"parler", "bark", "sapi"} for systems in by_text.values()))
+
+        expected_ids = {row["id"] for row in manifest}
+        outputs = [
+            base / "metrics" / "intelligibility" / "asr_wer.csv",
+            base / "metrics" / "naturalness" / "acoustic_sanity.csv",
+            base / "metrics" / "style_emotion" / "emotion_prosody.csv",
+            base / "combined" / "multisystem_main_metrics.csv",
+            base / "combined" / "multisystem_scored_main_metric.csv",
+            base / "analysis" / "per_clip_scores.csv",
+        ]
+        for path in outputs:
+            self.assertEqual({row["id"] for row in read_csv(path)}, expected_ids, path)
+
+        candidates = {row["candidate"]: row for row in read_csv(base / "analysis" / "surrogate_grouped_candidates.csv")}
+        for name in ("loso_low_dsp_ridge", "loso_neural_dsp_ridge"):
+            self.assertIn(name, candidates)
+            self.assertTrue(math.isfinite(float(candidates[name]["spearman"])))
+
+        public = read_csv(base / "human_evaluation" / "ratings_template.csv")
+        private = read_csv(base / "human_evaluation" / "private_blind_key.csv")
+        self.assertEqual(len(public), 18)
+        self.assertEqual({row["blind_id"] for row in public}, {row["blind_id"] for row in private})
+        self.assertNotIn("tts_system", public[0])
+        self.assertNotIn("model", public[0])
+
+    def test_automatic_consensus_outputs(self) -> None:
+        base = ROOT / "experiments" / "automatic_emotion_consensus_v1"
+        scores = read_csv(base / "analysis" / "per_clip_scores.csv")
+        self.assertEqual(len(scores), 52)
+        self.assertEqual({row["tts_system"] for row in scores}, {"parler", "bark", "sapi"})
+        self.assertEqual(sum(row["dataset"] == "controlled_emotion_intensity_v1" for row in scores), 8)
+
+        for row in scores:
+            intelligibility = float(row["intelligibility_auto_0_1"])
+            emotion = float(row["emotion_consensus_0_1"])
+            sanity = float(row["acoustic_sanity_0_1"])
+            expected = intelligibility**0.55 * emotion**0.35 * sanity**0.10
+            self.assertAlmostEqual(float(row["main_auto_v3_0_1"]), expected, places=10)
+            self.assertGreaterEqual(float(row["emotion_model_disagreement_0_1"]), 0.0)
+
+        candidates = read_csv(base / "analysis" / "surrogate_candidates.csv")
+        self.assertEqual(len(candidates), 15)
+        for row in candidates:
+            for field in ("spearman", "kendall_tau_b", "pairwise_accuracy", "mae"):
+                self.assertTrue(math.isfinite(float(row[field])), (row["candidate"], field))
+
+        controlled = {row["id"]: row for row in scores if row["dataset"] == "controlled_emotion_intensity_v1"}
+        self.assertGreater(
+            float(controlled["happy_obvious"]["emotion_consensus_0_1"]),
+            float(controlled["happy_subtle"]["emotion_consensus_0_1"]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

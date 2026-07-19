@@ -1,0 +1,9 @@
+id,target_emotion,text
+happy_01,happy,"I am so happy to see you today! This is wonderful news, and I can hardly stop smiling."
+happy_02,happy,"That was amazing! I feel excited, grateful, and full of energy right now."
+sad_01,sad,"I am sorry. I really miss the quiet mornings we used to share together."
+sad_02,sad,"The room feels empty today, and every small sound reminds me that you are gone."
+angry_01,angry,"I told you not to touch that file. This is unacceptable, and I need you to fix it now."
+angry_02,angry,"No, that answer is not good enough. We have waited too long, and I am extremely frustrated."
+neutral_01,neutral,"The package arrived at the front desk at three fifteen in the afternoon."
+neutral_02,neutral,"Please open the settings menu, choose account preferences, and confirm the update."

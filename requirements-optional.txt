@@ -1,0 +1,4 @@
+# Optional future metric/model dependencies.
+# Install only when adding stronger naturalness or ASR backends.
+openai-whisper
+datasets[audio]

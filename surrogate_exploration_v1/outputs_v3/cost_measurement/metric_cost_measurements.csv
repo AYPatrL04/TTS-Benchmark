@@ -1,0 +1,9 @@
+name,status,seconds_total,seconds_per_clip,notes,equivalent_26_clip_seconds
+very_low_text_duration_x200,success,0.109076,0.000021,in-process timing,0.000546
+low_dsp_base_features,success,1.558287,0.059934,in-process timing,
+low_dsp_enhanced_features_v3,success,0.803744,0.030913,in-process timing,
+fixed_surrogate_formula_x1000,success,0.820123,0.000032,in-process timing,0.000832
+main_naturalness_proxy,success,1.186913,0.045651,subprocess timing; log=main_naturalness_proxy.log,
+main_emotion_ser_prosody,success,32.084681,1.234026,subprocess timing; log=main_emotion_ser_prosody.log,
+main_whisper_wer,success,23.426323,0.901012,subprocess timing; log=main_whisper_wer.log,
+main_composite_score_only,success,0.106535,0.004098,in-process timing,

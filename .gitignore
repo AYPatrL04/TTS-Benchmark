@@ -18,3 +18,14 @@ logs/
 
 .DS_Store
 Thumbs.db
+
+# Local surrogate metric scratch artifacts.
+surrogate_exploration_v1/outputs/
+surrogate_exploration_v1/outputs_v2/
+surrogate_exploration_v1/outputs_v3/feature_snapshot.csv
+surrogate_exploration_v1/outputs_v3/nested_subset_selection_counts.csv
+surrogate_exploration_v1/outputs_v3/subset_search_top30_v3.csv
+surrogate_exploration_v1/outputs_v3/cost_measurement/*
+!surrogate_exploration_v1/outputs_v3/cost_measurement/metric_cost_measurements.csv
+!surrogate_exploration_v1/outputs_v3/cost_measurement/metric_cost_report.md
+!surrogate_exploration_v1/outputs_v3/cost_measurement/metric_cost_summary.csv

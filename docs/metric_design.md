@@ -1,198 +1,130 @@
-# Main Metric Design
+# Metric Design
 
-Current version: 2026-07-19
+## Output Contract
 
-## Goal
-
-Define a single automatic main metric for emotion-aware TTS evaluation.
-
-The score should measure whether generated speech:
-
-- preserves the input text;
-- sounds acoustically usable;
-- expresses the intended emotion;
-- uses prosody that fits the intended emotion.
-
-All component scores and the final score are normalized to `0-1`, where higher
-is better.
-
-This main metric is intended to be the reference target for later surrogate
-metric search. Surrogate metrics should be selected by how well they correlate
-with and rank against this score.
-
-## Required Inputs
-
-The scoring pipeline expects a combined CSV with these fields:
-
-| field | meaning |
-| --- | --- |
-| `id` | sample id |
-| `text` | intended input text |
-| `audio_path` | generated audio path |
-| `target_emotion` | intended emotion label |
-| `wer` | ASR word error rate |
-| `cer` | ASR character error rate |
-| `naturalness_proxy_1_5` | acoustic quality proxy on a 1-5 scale |
-| `target_emotion_prob` | SER probability assigned to the target emotion |
-| `target_emotion_match` | `1` if SER top label equals target emotion, else `0` |
-| `prosody_activity_0_1` | pitch/energy activity score |
-
-Implementation:
+The benchmark is vector-first. Every valid sample reports:
 
 ```text
-scripts/score_emotion_tts_main_metric.py
+(I, Q, E, prosody diagnostics, acoustic sanity flags)
 ```
 
-## Formula
+`main_metric_0_1` is an experimental scalar named
+`provisional_teacher_v2`. It is useful for pipeline and surrogate experiments,
+but is not a human-calibrated ground truth, MOS, or publication-grade model
+ranking metric.
 
-```text
-I = 0.80 * (1 - WER) + 0.20 * (1 - CER)
-Q = (naturalness_proxy_1_5 - 1) / 4
-E = 0.70 * target_emotion_prob + 0.30 * target_emotion_match
-P = 1 - abs(prosody_activity - target_prosody) / tolerance
-
-raw = 0.45 * I + 0.15 * Q + 0.30 * E + 0.10 * P
-gate = 0.35 + 0.65 * I
-
-main_metric = raw * gate
-```
-
-All intermediate values are clipped to `[0, 1]` when needed.
+Missing required values produce `metric_status=invalid`; missing values are
+never converted to zero. Reports include valid-sample coverage.
 
 ## Components
 
-### Intelligibility `I`
+### Intelligibility
 
 ```text
-I = 0.80 * (1 - WER) + 0.20 * (1 - CER)
+I = clip(1 - normalized_WER, 0, 1)
 ```
 
-`I` measures whether the generated audio preserves the intended text.
+WER is computed from a Whisper transcript after text normalization. CER remains
+in `cer_diagnostic_0_1`, but is not blended with WER because both derive from
+the same ASR transcript. The output also retains transcript and word edits for
+error analysis.
 
-WER receives the larger weight because word-level errors are more damaging for
-TTS usefulness. CER is included to soften cases where word tokenization,
-numbers, punctuation, or spelling variants make WER too harsh.
+This measures TTS errors, ASR errors, and normalization errors together. The
+current `whisper-tiny.en` result therefore needs stronger or heterogeneous ASR
+validation before cross-system use.
 
-### Acoustic Quality `Q`
+### Quality and Acoustic Sanity
+
+If a learned MOS column is present:
 
 ```text
-Q = (naturalness_proxy_1_5 - 1) / 4
+Q = clip((utmos_score_1_5 - 1) / 4, 0, 1)
+quality_component_source = learned_mos
 ```
 
-`Q` converts a `1-5` naturalness proxy into the shared `0-1` scale.
-
-The current proxy is a lightweight no-reference acoustic score. It is useful as
-a basic quality guard, but should not be treated as a final perceptual MOS
-replacement.
-
-### Emotion Match `E`
+Without learned MOS:
 
 ```text
-E = 0.70 * target_emotion_prob + 0.30 * target_emotion_match
+quality_component_source = acoustic_sanity_fallback
 ```
 
-`E` measures whether the generated audio expresses the intended emotion.
+The fallback checks gross loudness, silence, clipping, duration, and spectral
+flatness failures. It is deliberately named acoustic sanity, not naturalness.
+It cannot rank robotic speech, vocoder artifacts, reverberation, or subtle
+prosody problems reliably. It is reported and used by `ranking_eligible`, but
+does not add positive weight to the scalar.
 
-The target emotion probability captures confidence. The top-label match adds a
-categorical reward when the predicted emotion is exactly the intended one.
-
-### Prosody Fit `P`
+### Emotion
 
 ```text
-P = 1 - abs(prosody_activity - target_prosody) / tolerance
+E = clip(target_emotion_prob, 0, 1)
 ```
 
-`P` measures whether pitch and energy movement are appropriate for the intended
-emotion. It is target-dependent: stronger prosody is not always better.
+The previous hard argmax-match bonus was removed because it duplicated the same
+classifier evidence and introduced a discontinuous score jump. The current
+SUPERB model is an uncalibrated IEMOCAP SER teacher applied out of domain to
+synthetic speech. Its probability is retained for experimentation, not treated
+as human emotion agreement.
 
-Current target settings:
+### Prosody
 
-| emotion | target prosody activity | tolerance |
-| --- | ---: | ---: |
-| happy | 0.85 | 0.35 |
-| angry | 0.90 | 0.35 |
-| sad | 0.60 | 0.40 |
-| neutral | 0.80 | 0.40 |
+Prosody is diagnostic and excluded from the scalar. Pitch variation is measured
+in semitones relative to the utterance median, with standard deviation, median
+absolute deviation, and p90-p10 range. Energy variation, voiced ratio, speaking
+rate, and pause behavior remain separate features.
 
-## Weights
+This replaces speaker-dependent Hz-only activity as the preferred description.
+Emotion targets must eventually be learned as conditional distributions from
+human speech instead of hand-set point targets.
 
-| component | weight | rationale |
-| --- | ---: | --- |
-| `I` intelligibility | 0.45 | text preservation is the primary requirement |
-| `E` emotion match | 0.30 | emotion control is central to this task |
-| `Q` acoustic quality | 0.15 | audio quality matters, but the current proxy is still coarse |
-| `P` prosody fit | 0.10 | prosody helps style evaluation but is not enough alone |
-
-The intelligibility gate is:
+## Provisional Scalar
 
 ```text
-gate = 0.35 + 0.65 * I
+with learned MOS:
+teacher_v2 = clip(0.55 * I + 0.35 * E + 0.10 * Q, 0, 1)
+
+without learned MOS:
+teacher_v2 = clip((0.55 * I + 0.35 * E) / 0.90, 0, 1)
+
+ranking_eligible = (I >= 0.70) and (acoustic_sanity >= 0.50)
 ```
 
-This prevents samples with poor text preservation from receiving high final
-scores only because emotion or acoustic signals look good.
-
-## Interpretation
-
-Suggested score bands:
-
-| score range | interpretation |
-| --- | --- |
-| `0.90-1.00` | strong automatic pass |
-| `0.75-0.90` | generally acceptable, inspect if used as a top candidate |
-| `0.60-0.75` | mixed quality or style mismatch likely |
-| `<0.60` | likely failure or strong metric disagreement |
-
-These bands are practical screening bands, not human MOS labels.
+The weights are not human-calibrated. `ranking_eligible` is a hard screening
+constraint, not a claim that 0.70 is a perceptual acceptability threshold.
+Where different failure modes matter, compare the component vector or Pareto
+front rather than relying on the scalar.
 
 ## Output Fields
 
-The scoring script writes:
-
-| field | meaning |
+| Field | Meaning |
 | --- | --- |
-| `main_metric_0_1` | final gated composite score |
-| `main_metric_raw_0_1` | weighted score before intelligibility gate |
+| `metric_version` | `provisional_teacher_v2` |
+| `metric_status` | `valid_provisional` or `invalid` |
+| `metric_missing_fields` | missing required inputs |
+| `main_metric_0_1` | provisional teacher scalar |
+| `ranking_eligible` | hard intelligibility/sanity screen |
 | `intelligibility_component_0_1` | `I` |
-| `naturalness_component_0_1` | `Q` |
+| `quality_component_0_1` | learned MOS or sanity diagnostic |
+| `quality_component_source` | learned MOS or sanity fallback |
 | `emotion_component_0_1` | `E` |
-| `prosody_fit_component_0_1` | `P` |
-| `intelligibility_gate_0_1` | gate multiplier |
+| `cer_diagnostic_0_1` | CER, not in scalar |
+| `prosody_diagnostic_0_1` | activity descriptor, not in scalar |
+| `teacher_active_weights` | weights used for the current row |
 
-## Usage
+## Validation Required
 
-```powershell
-conda run -n TTS python scripts\score_emotion_tts_main_metric.py `
-  --input path\to\combined_metrics.csv `
-  --output-csv path\to\scored_main_metric.csv `
-  --output-md path\to\scored_main_metric.md `
-  --experiment-name ExperimentName
-```
+The current data contain 26 clips from one Parler-TTS configuration and largely
+one speaker. Before using the metric for model ranking or reward learning:
 
-## Limitations
+1. Collect human intelligibility, naturalness, emotion-match, and overall
+   preference labels with multiple raters.
+2. Add structurally different TTS systems, speakers, texts, natural failures,
+   and controlled degradations.
+3. Calibrate ASR, MOS, and SER outputs on synthetic speech.
+4. Learn a non-negative monotonic composite mapping from human judgments.
+5. Hold out complete TTS systems and texts for final evaluation.
 
-This main metric is automatic and should be treated as a benchmark target for
-surrogate discovery, not as perfect human judgment.
-
-Known limitations:
-
-- ASR-based WER/CER can be sensitive to numbers, acronyms, punctuation, and
-  normalization choices.
-- Single-model emotion classification can misread style, speaker traits, or
-  lexical content.
-- The current naturalness proxy is too coarse for subtle perceptual quality.
-- Prosody activity measures pitch/energy movement, not semantic
-  appropriateness by itself.
-
-## Improvement Directions
-
-Near-term improvements:
-
-- use a stronger ASR model and stricter text normalization;
-- replace the lightweight naturalness proxy with UTMOS, NISQA, DNSMOS, or a
-  comparable MOS predictor;
-- add a second independent emotion/style model and average or calibrate the
-  emotion score;
-- collect a small human AB/MOS calibration set for boundary cases;
-- fit cheap surrogate metrics against this main metric after the main metric is
-  fixed.
+Likely quality extensions are calibrated UTMOS plus defect dimensions from a
+model such as NISQA. Likely emotion extensions are heterogeneous SER models and
+continuous valence-arousal predictions. These are future integrations, not
+current measured components.

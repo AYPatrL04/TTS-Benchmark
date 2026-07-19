@@ -139,7 +139,7 @@ def main() -> None:
     py = sys.executable
     measurements.append(
         measure_command(
-            "main_naturalness_proxy",
+            "main_acoustic_sanity",
             sample_count,
             [
                 py,
@@ -213,7 +213,7 @@ def main() -> None:
 
     success_measurements = [row for row in measurements if str(row["status"]) == "success"]
     main_component_names = {
-        "main_naturalness_proxy",
+        "main_acoustic_sanity",
         "main_emotion_ser_prosody",
         "main_whisper_wer",
         "main_composite_score_only",

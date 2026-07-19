@@ -1,5 +1,5 @@
 scenario,seconds_total_26,seconds_per_clip,relative_to_main,notes
-main_metric_current_pipeline,56.804452,2.184787,1.000000,measured earlier: Whisper + SER/prosody + naturalness + final scoring
-low_dsp_base_plus_v3_features,2.362031,0.090847,0.041582,measured earlier
-sim_like_embedding_only,3.904094,0.150157,0.068729,superb/wav2vec2-base-superb-er; device=cuda; local cached model
-sim_like_plus_low_dsp,4.600160,0.176929,0.080982,embedding extraction plus enhanced low-DSP feature extraction
+main_metric_current_pipeline,32.969806,1.268069,1.000000,loaded from surrogate_exploration_v1\outputs_v3\cost_measurement\metric_cost_summary.csv
+low_dsp_base_plus_v3_features,1.968207,0.075700,0.059697,loaded from surrogate_exploration_v1\outputs_v3\cost_measurement\metric_cost_summary.csv
+sim_like_embedding_only,3.900485,0.150019,0.118305,superb/wav2vec2-base-superb-er; device=cuda; local cached model
+sim_like_plus_low_dsp,4.675101,0.179812,0.141799,embedding extraction plus enhanced low-DSP feature extraction

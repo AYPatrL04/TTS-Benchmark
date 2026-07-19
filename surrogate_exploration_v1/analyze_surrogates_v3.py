@@ -42,8 +42,8 @@ BASE_LOW_FEATURES = [
     "signal_quality",
     "silence_ratio",
     "energy_cv",
-    "f0_std_hz",
-    "f0_range_hz",
+    "f0_std_semitones",
+    "f0_range_semitones_p90_p10",
     "voiced_ratio",
     "zcr",
     "spectral_flatness",
@@ -72,7 +72,7 @@ SUBSET_SEARCH_FEATURES = [
     "speech_rate_wps",
     "silence_ratio",
     "energy_cv",
-    "f0_range_hz",
+    "f0_range_semitones_p90_p10",
     "voiced_ratio",
     "zcr",
     "spectral_centroid_hz",
@@ -91,7 +91,7 @@ NESTED_SUBSET_FEATURES = [
     "text_ease",
     "rate_fit",
     "energy_cv",
-    "f0_range_hz",
+    "f0_range_semitones_p90_p10",
     "high_freq_ratio",
     "prosody_fit_light",
     "prosody_activity_light",
@@ -113,8 +113,7 @@ MEDIUM_FEATURES = [
 HIGH_REFERENCE_FEATURES = [
     "intelligibility_component_0_1",
     "emotion_component_0_1",
-    "prosody_fit_component_0_1",
-    "naturalness_component_0_1",
+    "quality_component_0_1",
 ]
 
 
@@ -252,7 +251,7 @@ def style_targets(target_emotion: str) -> dict[str, float]:
             "activity": 0.82,
             "rate": 3.25,
             "loudness": -17.0,
-            "pitch_range": 290.0,
+            "pitch_range": 8.0,
             "energy_cv": 0.88,
             "pause_rate": 0.20,
             "spectral_centroid": 740.0,
@@ -261,7 +260,7 @@ def style_targets(target_emotion: str) -> dict[str, float]:
             "activity": 0.88,
             "rate": 3.65,
             "loudness": -17.5,
-            "pitch_range": 300.0,
+            "pitch_range": 8.5,
             "energy_cv": 0.95,
             "pause_rate": 0.18,
             "spectral_centroid": 760.0,
@@ -270,7 +269,7 @@ def style_targets(target_emotion: str) -> dict[str, float]:
             "activity": 0.28,
             "rate": 2.65,
             "loudness": -20.5,
-            "pitch_range": 185.0,
+            "pitch_range": 4.0,
             "energy_cv": 0.62,
             "pause_rate": 0.45,
             "spectral_centroid": 520.0,
@@ -279,7 +278,7 @@ def style_targets(target_emotion: str) -> dict[str, float]:
             "activity": 0.55,
             "rate": 3.15,
             "loudness": -18.5,
-            "pitch_range": 235.0,
+            "pitch_range": 5.5,
             "energy_cv": 0.78,
             "pause_rate": 0.28,
             "spectral_centroid": 620.0,
@@ -292,7 +291,7 @@ def add_derived_features(row: dict[str, float]) -> None:
     target = style_targets(str(row.get("target_emotion", "neutral")))
     rate = row["speech_rate_wps"]
     activity = row["prosody_activity_light"]
-    pitch_range = row["f0_range_hz"]
+    pitch_range = row["f0_range_semitones_p90_p10"]
     energy_cv = row["energy_cv"]
     loudness = row["rms_dbfs"]
     pause_rate = row["pause_rate_per_sec"]
@@ -301,7 +300,7 @@ def add_derived_features(row: dict[str, float]) -> None:
     activity_fit = fit_to_target(activity, target["activity"], 0.42)
     rate_fit_emotion = fit_to_target(rate, target["rate"], 1.25)
     loudness_fit = fit_to_target(loudness, target["loudness"], 7.0)
-    pitch_fit = fit_to_target(pitch_range, target["pitch_range"], 175.0)
+    pitch_fit = fit_to_target(pitch_range, target["pitch_range"], 5.0)
     energy_fit = fit_to_target(energy_cv, target["energy_cv"], 0.55)
     pause_fit = fit_to_target(pause_rate, target["pause_rate"], 0.65)
     centroid_fit = fit_to_target(centroid, target["spectral_centroid"], 650.0)
@@ -579,7 +578,7 @@ def resource_rows(feature_elapsed: float) -> list[dict[str, str]]:
         },
         {
             "tier": "high_reference",
-            "uses": "ASR WER/CER plus SER/naturalness components",
+            "uses": "ASR WER plus SER and quality/sanity components",
             "extra_models": "ASR plus SER/proxy models",
             "expected_cost": "baseline/main metric cost; not suitable as surrogate except sanity upper bound",
             "current_run_observation": "not rerun here; reused existing main metric columns",
@@ -635,12 +634,12 @@ def report_lines(
         "",
         "## Top Candidates",
         "",
-        "| candidate | tier | Pearson | 90% CI | Spearman | 90% CI | MAE | RMSE | top3 | top5 | bottom5 |",
+        "| candidate | tier | Pearson | 90% CI | Spearman | 90% CI | Kendall | pairwise acc. | MAE | top5 | bottom5 |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in top:
         lines.append(
-            f"| {row['candidate']} | {row['cost_tier']} | {row['pearson']} | {row['pearson_ci90']} | {row['spearman']} | {row['spearman_ci90']} | {row['mae']} | {row['rmse']} | {row['top3_overlap']} | {row['top5_overlap']} | {row['bottom5_overlap']} |"
+            f"| {row['candidate']} | {row['cost_tier']} | {row['pearson']} | {row['pearson_ci90']} | {row['spearman']} | {row['spearman_ci90']} | {row['kendall_tau_b']} | {row['pairwise_accuracy']} | {row['mae']} | {row['top5_overlap']} | {row['bottom5_overlap']} |"
         )
 
     lines.extend(
@@ -675,6 +674,7 @@ def report_lines(
             "- Medium-neural SER/SIM-like signals are the most promising surrogate family if the goal is to approach the high correlation Yufan reported for SIM versus WER.",
             "- Pure text and duration features are too weak for this task. They can flag difficult prompts, but they do not know whether the generated audio actually pronounced the text or conveyed emotion.",
             "- Leave-dataset-out results are the caution sign: the sample set is still too small and too Parler-specific for a final surrogate claim.",
+            "- Both datasets use the same TTS system and speaker. Leave-dataset-out is therefore a boundary-set shift check, not held-out-system validation.",
             "",
             "## Local Outputs",
             "",

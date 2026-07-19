@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Compute a lightweight no-reference acoustic naturalness proxy.")
+    parser = argparse.ArgumentParser(description="Compute a lightweight no-reference acoustic sanity score.")
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-csv", required=True, type=Path)
     parser.add_argument("--output-md", required=True, type=Path)
@@ -130,10 +130,13 @@ def score_audio(modules: dict[str, Any], audio: Any) -> dict[str, str]:
         + 0.15 * flatness_penalty
         + 0.05 * duration_penalty
     )
-    score_1_5 = clamp(5.0 - 4.0 * penalty, 1.0, 5.0)
+    sanity_score = clamp(1.0 - penalty, 0.0, 1.0)
 
     return {
-        "naturalness_proxy_1_5": f"{score_1_5:.6f}",
+        "acoustic_sanity_score_0_1": f"{sanity_score:.6f}",
+        "acoustic_sanity_penalty": f"{penalty:.6f}",
+        # Deprecated aliases keep historical report scripts readable.
+        "naturalness_proxy_1_5": f"{1.0 + 4.0 * sanity_score:.6f}",
         "naturalness_penalty": f"{penalty:.6f}",
         "nat_duration_sec": f"{duration:.6f}",
         "nat_rms_dbfs": f"{rms_dbfs:.6f}",
@@ -162,10 +165,12 @@ def main() -> None:
         result = dict(row)
         result.update(score_audio(modules, audio))
         output_rows.append(result)
-        print(f"{row.get('id', audio_path.name)}: naturalness_proxy={result['naturalness_proxy_1_5']}")
+        print(f"{row.get('id', audio_path.name)}: acoustic_sanity={result['acoustic_sanity_score_0_1']}")
 
     base_fields = list(rows[0].keys()) if rows else []
     extra_fields = [
+        "acoustic_sanity_score_0_1",
+        "acoustic_sanity_penalty",
         "naturalness_proxy_1_5",
         "naturalness_penalty",
         "nat_duration_sec",
@@ -182,24 +187,24 @@ def main() -> None:
         writer.writeheader()
         writer.writerows(output_rows)
 
-    values = [float(row["naturalness_proxy_1_5"]) for row in output_rows]
+    values = [float(row["acoustic_sanity_score_0_1"]) for row in output_rows]
     mean_score = sum(values) / len(values) if values else math.nan
-    sorted_rows = sorted(output_rows, key=lambda row: float(row["naturalness_proxy_1_5"]), reverse=True)
+    sorted_rows = sorted(output_rows, key=lambda row: float(row["acoustic_sanity_score_0_1"]), reverse=True)
     lines = [
-        "# Acoustic Naturalness Proxy",
+        "# Acoustic Sanity Score",
         "",
         f"- input: `{args.input}`",
         f"- samples: {len(output_rows)}",
-        f"- mean naturalness proxy: {mean_score:.6f}",
+        f"- mean acoustic sanity score: {mean_score:.6f}",
         "",
-        "This is a lightweight no-reference fallback, not a learned MOS model. It is intended to keep the main-metric pipeline runnable when UTMOS/NISQA weights are unavailable.",
+        "This heuristic detects gross acoustic failures. It is not naturalness or MOS and must not be interpreted as either.",
         "",
-        "| rank | id | naturalness_proxy | rms_dbfs | silence_ratio | clipping_ratio | flatness |",
+        "| rank | id | acoustic_sanity | rms_dbfs | silence_ratio | clipping_ratio | flatness |",
         "| ---: | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for rank, row in enumerate(sorted_rows, start=1):
         lines.append(
-            "| {rank} | {id} | {naturalness_proxy_1_5} | {nat_rms_dbfs} | {nat_silence_ratio} | {nat_clipping_ratio} | {nat_spectral_flatness} |".format(
+            "| {rank} | {id} | {acoustic_sanity_score_0_1} | {nat_rms_dbfs} | {nat_silence_ratio} | {nat_clipping_ratio} | {nat_spectral_flatness} |".format(
                 rank=rank, **row
             )
         )

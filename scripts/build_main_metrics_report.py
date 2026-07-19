@@ -46,14 +46,14 @@ def main() -> None:
         nrow = naturalness[item_id]
         srow = style[item_id]
         wer = f(irow, "wer")
-        naturalness_score = f(nrow, "naturalness_proxy_1_5")
+        acoustic_sanity = f(nrow, "acoustic_sanity_score_0_1")
+        if not math.isfinite(acoustic_sanity):
+            legacy_naturalness = f(nrow, "naturalness_proxy_1_5")
+            acoustic_sanity = (legacy_naturalness - 1.0) / 4.0 if math.isfinite(legacy_naturalness) else math.nan
         prosody = f(srow, "prosody_activity_0_1")
         emotion_top_prob = f(srow, "emotion_top_prob")
         target_emotion_prob = f(srow, "target_emotion_prob")
         intelligibility_score_0_100 = max(0.0, 1.0 - min(wer, 1.0)) * 100.0 if math.isfinite(wer) else math.nan
-        naturalness_score_0_100 = (
-            (naturalness_score - 1.0) / 4.0 * 100.0 if math.isfinite(naturalness_score) else math.nan
-        )
         style_emotion_prob = target_emotion_prob if math.isfinite(target_emotion_prob) else emotion_top_prob
         style_proxy_0_100 = (
             0.5 * prosody * 100.0 + 0.5 * style_emotion_prob * 100.0
@@ -71,14 +71,19 @@ def main() -> None:
                 "wer": irow.get("wer", ""),
                 "cer": irow.get("cer", ""),
                 "intelligibility_score_0_100": f"{intelligibility_score_0_100:.3f}",
-                "naturalness_proxy_1_5": nrow.get("naturalness_proxy_1_5", ""),
-                "naturalness_score_0_100": f"{naturalness_score_0_100:.3f}",
+                "acoustic_sanity_score_0_1": f"{acoustic_sanity:.6f}" if math.isfinite(acoustic_sanity) else "",
                 "emotion_top_label": srow.get("emotion_top_label", ""),
                 "emotion_top_prob": srow.get("emotion_top_prob", ""),
                 "target_emotion_normalized": srow.get("target_emotion_normalized", ""),
                 "target_emotion_prob": srow.get("target_emotion_prob", ""),
                 "target_emotion_match": srow.get("target_emotion_match", ""),
                 "prosody_activity_0_1": srow.get("prosody_activity_0_1", ""),
+                "f0_median_hz": srow.get("f0_median_hz", ""),
+                "f0_std_semitones": srow.get("f0_std_semitones", ""),
+                "f0_mad_semitones": srow.get("f0_mad_semitones", ""),
+                "f0_range_semitones_p90_p10": srow.get("f0_range_semitones_p90_p10", ""),
+                "energy_cv": srow.get("energy_cv", ""),
+                "voiced_ratio": srow.get("voiced_ratio", ""),
                 "style_proxy_0_100": f"{style_proxy_0_100:.3f}",
                 "coarse_codec_sim_like": irow.get("coarse_codec_sim_like", ""),
                 "coarse_codec_nll": irow.get("coarse_codec_nll", ""),
@@ -95,7 +100,7 @@ def main() -> None:
         writer.writerows(rows)
 
     worst_wer = sorted(rows, key=lambda row: f(row, "wer"), reverse=True)[:5]
-    lowest_naturalness = sorted(rows, key=lambda row: f(row, "naturalness_proxy_1_5"))[:5]
+    lowest_naturalness = sorted(rows, key=lambda row: f(row, "acoustic_sanity_score_0_1"))[:5]
     lowest_style = sorted(rows, key=lambda row: f(row, "style_proxy_0_100"))[:5]
     emotion_counts: dict[str, int] = {}
     for row in rows:
@@ -103,12 +108,12 @@ def main() -> None:
         emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
 
     lines = [
-        "# Main Metrics V1 Report",
+        "# Main Metric Components V2 Report",
         "",
         "This report joins three automatic main metric tracks:",
         "",
         "- Intelligibility: Whisper-normalized ASR WER/CER.",
-        "- Naturalness: lightweight acoustic naturalness proxy fallback. UTMOS script is implemented separately but the weight download did not complete in this run.",
+        "- Acoustic sanity: clipping, silence, loudness, duration, and flatness checks. This is not naturalness or MOS.",
         "- Style/emotion: SUPERB Wav2Vec2 emotion classifier plus pitch/energy prosody activity.",
         "",
         "## Aggregate",
@@ -117,7 +122,7 @@ def main() -> None:
         f"- mean WER: {mean([f(row, 'wer') for row in rows]):.6f}",
         f"- mean CER: {mean([f(row, 'cer') for row in rows]):.6f}",
         f"- mean intelligibility score: {mean([f(row, 'intelligibility_score_0_100') for row in rows]):.3f}/100",
-        f"- mean naturalness proxy: {mean([f(row, 'naturalness_proxy_1_5') for row in rows]):.6f}/5",
+        f"- mean acoustic sanity: {mean([f(row, 'acoustic_sanity_score_0_1') for row in rows]):.6f}",
         f"- mean prosody activity: {mean([f(row, 'prosody_activity_0_1') for row in rows]):.6f}",
         f"- emotion top-label counts: {emotion_counts}",
         "",
@@ -129,13 +134,13 @@ def main() -> None:
     for row in worst_wer:
         transcript = row["asr_transcript"].replace("|", "\\|")
         lines.append(
-            f"| {row['id']} | {row['wer']} | {row['cer']} | {row['naturalness_proxy_1_5']} | {row['emotion_top_label']} | {row['prosody_activity_0_1']} | {transcript} |"
+            f"| {row['id']} | {row['wer']} | {row['cer']} | {row['acoustic_sanity_score_0_1']} | {row['emotion_top_label']} | {row['prosody_activity_0_1']} | {transcript} |"
         )
 
-    lines.extend(["", "## Lowest Naturalness Proxy", "", "| id | naturalness | WER | silence_ratio | audio |", "| --- | ---: | ---: | ---: | --- |"])
+    lines.extend(["", "## Lowest Acoustic Sanity", "", "| id | acoustic sanity | WER | silence_ratio | audio |", "| --- | ---: | ---: | ---: | --- |"])
     for row in lowest_naturalness:
         lines.append(
-            f"| {row['id']} | {row['naturalness_proxy_1_5']} | {row['wer']} | {row['silence_ratio']} | `{row['audio_path']}` |"
+            f"| {row['id']} | {row['acoustic_sanity_score_0_1']} | {row['wer']} | {row['silence_ratio']} | `{row['audio_path']}` |"
         )
 
     lines.extend(["", "## Lowest Style Proxy", "", "| id | style_proxy | emotion | emotion_prob | prosody | audio |", "| --- | ---: | --- | ---: | ---: | --- |"])
@@ -150,7 +155,7 @@ def main() -> None:
             "## Interpretation",
             "",
             "- WER behaves as an intelligibility metric: substitutions, deletions, and insertions show where ASR could not recover the intended text.",
-            "- The naturalness fallback mostly catches gross acoustic issues, not semantic omissions. Replace it with UTMOS/NISQA when weights are available.",
+            "- Acoustic sanity catches gross failures only. Add calibrated UTMOS and defect dimensions before interpreting Q as naturalness.",
             "- Style/emotion results should be read as an automatic screening signal; SER can be sensitive to speaker identity, wording, and prosody artifacts.",
             "- These automatic main metrics are suitable for screening and surrogate fitting, but still need a small human listening sanity check for boundary cases.",
         ]

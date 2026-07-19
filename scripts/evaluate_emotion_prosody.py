@@ -139,15 +139,36 @@ def prosody_features(modules: dict[str, Any], audio: Any) -> dict[str, str]:
     f0_mean = float(np.mean(f0_values)) if f0_values else math.nan
     f0_std = float(np.std(f0_values)) if f0_values else math.nan
     f0_range = float(np.max(f0_values) - np.min(f0_values)) if f0_values else math.nan
-    voiced_ratio = float(len(f0_values) / len(rms_values)) if rms_values.size else math.nan
-    prosody_activity = 0.5 * min(1.0, (f0_std if math.isfinite(f0_std) else 0.0) / 45.0) + 0.5 * min(
-        1.0, (energy_cv if math.isfinite(energy_cv) else 0.0) / 0.9
+    f0_median = float(np.median(f0_values)) if f0_values else math.nan
+    semitone_values = (
+        12.0 * np.log2(np.asarray(f0_values, dtype="float64") / max(f0_median, 1e-8))
+        if f0_values
+        else np.asarray([], dtype="float64")
     )
+    f0_std_st = float(np.std(semitone_values)) if semitone_values.size else math.nan
+    f0_mad_st = (
+        float(np.median(np.abs(semitone_values - np.median(semitone_values))))
+        if semitone_values.size
+        else math.nan
+    )
+    f0_range_st = (
+        float(np.percentile(semitone_values, 90) - np.percentile(semitone_values, 10))
+        if semitone_values.size
+        else math.nan
+    )
+    voiced_ratio = float(len(f0_values) / len(rms_values)) if rms_values.size else math.nan
+    pitch_activity = 1.0 - math.exp(-max(f0_std_st if math.isfinite(f0_std_st) else 0.0, 0.0) / 3.0)
+    energy_activity = 1.0 - math.exp(-max(energy_cv if math.isfinite(energy_cv) else 0.0, 0.0) / 0.65)
+    prosody_activity = 0.5 * pitch_activity + 0.5 * energy_activity
     return {
         "style_duration_sec": f"{duration_sec:.6f}",
         "f0_mean_hz": f"{f0_mean:.6f}" if math.isfinite(f0_mean) else "",
         "f0_std_hz": f"{f0_std:.6f}" if math.isfinite(f0_std) else "",
         "f0_range_hz": f"{f0_range:.6f}" if math.isfinite(f0_range) else "",
+        "f0_median_hz": f"{f0_median:.6f}" if math.isfinite(f0_median) else "",
+        "f0_std_semitones": f"{f0_std_st:.6f}" if math.isfinite(f0_std_st) else "",
+        "f0_mad_semitones": f"{f0_mad_st:.6f}" if math.isfinite(f0_mad_st) else "",
+        "f0_range_semitones_p90_p10": f"{f0_range_st:.6f}" if math.isfinite(f0_range_st) else "",
         "voiced_ratio": f"{voiced_ratio:.6f}" if math.isfinite(voiced_ratio) else "",
         "energy_cv": f"{energy_cv:.6f}" if math.isfinite(energy_cv) else "",
         "style_silence_ratio": f"{silence_ratio:.6f}" if math.isfinite(silence_ratio) else "",
@@ -247,6 +268,10 @@ def main() -> None:
         "f0_mean_hz",
         "f0_std_hz",
         "f0_range_hz",
+        "f0_median_hz",
+        "f0_std_semitones",
+        "f0_mad_semitones",
+        "f0_range_semitones_p90_p10",
         "voiced_ratio",
         "energy_cv",
         "style_silence_ratio",

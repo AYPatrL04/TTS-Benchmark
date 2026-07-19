@@ -1,5 +1,5 @@
 tier,uses,extra_models,expected_cost,current_run_observation
 very_low,"text, manifest duration, precomputed generation metadata",none,negligible; milliseconds per clip,included inside Python table pass
-low_dsp,"wav read, frame RMS, FFT, coarse f0/prosody features",none,CPU seconds for tens/hundreds of clips; scales linearly with audio length,enhanced waveform feature extraction for 26 clips: 0.745s
+low_dsp,"wav read, frame RMS, FFT, coarse f0/prosody features",none,CPU seconds for tens/hundreds of clips; scales linearly with audio length,enhanced waveform feature extraction for 26 clips: 0.800s
 medium_neural,emotion classifier or speaker/style embedding such as SIM,one neural audio encoder,"much cheaper than full objective if batched, but requires model load/GPU or slower CPU",not rerun here; reused existing SER columns from main metric outputs
-high_reference,ASR WER/CER plus SER/naturalness components,ASR plus SER/proxy models,baseline/main metric cost; not suitable as surrogate except sanity upper bound,not rerun here; reused existing main metric columns
+high_reference,ASR WER plus SER and quality/sanity components,ASR plus SER/proxy models,baseline/main metric cost; not suitable as surrogate except sanity upper bound,not rerun here; reused existing main metric columns

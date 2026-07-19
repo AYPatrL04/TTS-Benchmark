@@ -29,8 +29,30 @@ from analyze_surrogates_v3 import load_rows_with_audio_features
 
 
 OUTPUT_DIR = EXPLORE_DIR / "outputs_v3" / "sim_like"
+COST_SUMMARY = EXPLORE_DIR / "outputs_v3" / "cost_measurement" / "metric_cost_summary.csv"
 MODEL_NAME = "superb/wav2vec2-base-superb-er"
 EMOTIONS = ["neutral", "happy", "angry", "sad"]
+
+
+def load_cost_baseline() -> tuple[float, float]:
+    if not COST_SUMMARY.exists():
+        return math.nan, math.nan
+    with COST_SUMMARY.open(newline="", encoding="utf-8-sig") as handle:
+        rows = {row["scenario"]: row for row in csv.DictReader(handle)}
+    try:
+        main_total = float(rows["main_metric_current_pipeline"]["seconds_total_26"])
+        low_dsp_total = float(rows["low_dsp_base_plus_v3_features"]["seconds_total_26"])
+    except (KeyError, TypeError, ValueError):
+        return math.nan, math.nan
+    return main_total, low_dsp_total
+
+
+def format_cost(value: float) -> str:
+    return f"{value:.6f}" if math.isfinite(value) else ""
+
+
+def relative_cost(value: float, baseline: float) -> str:
+    return f"{value / baseline:.6f}" if math.isfinite(baseline) and baseline > 0 else ""
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -358,37 +380,36 @@ def main() -> None:
     write_csv(OUTPUT_DIR / "sim_like_candidates.csv", candidates)
     write_csv(OUTPUT_DIR / "sim_like_per_sample.csv", prediction_table(rows, prediction_map))
 
-    main_total = 56.804452
-    low_dsp_total = 2.362031
+    main_total, low_dsp_total = load_cost_baseline()
     sim_total = embedding_elapsed
     sim_plus_low_total = embedding_elapsed + low_dsp_elapsed
     cost_rows = [
         {
             "scenario": "main_metric_current_pipeline",
-            "seconds_total_26": f"{main_total:.6f}",
-            "seconds_per_clip": f"{main_total / len(rows):.6f}",
-            "relative_to_main": "1.000000",
-            "notes": "measured earlier: Whisper + SER/prosody + naturalness + final scoring",
+            "seconds_total_26": format_cost(main_total),
+            "seconds_per_clip": format_cost(main_total / len(rows)) if math.isfinite(main_total) else "",
+            "relative_to_main": "1.000000" if math.isfinite(main_total) else "",
+            "notes": f"loaded from {COST_SUMMARY.relative_to(PROJECT_ROOT)}",
         },
         {
             "scenario": "low_dsp_base_plus_v3_features",
-            "seconds_total_26": f"{low_dsp_total:.6f}",
-            "seconds_per_clip": f"{low_dsp_total / len(rows):.6f}",
-            "relative_to_main": f"{low_dsp_total / main_total:.6f}",
-            "notes": "measured earlier",
+            "seconds_total_26": format_cost(low_dsp_total),
+            "seconds_per_clip": format_cost(low_dsp_total / len(rows)) if math.isfinite(low_dsp_total) else "",
+            "relative_to_main": relative_cost(low_dsp_total, main_total),
+            "notes": f"loaded from {COST_SUMMARY.relative_to(PROJECT_ROOT)}",
         },
         {
             "scenario": "sim_like_embedding_only",
             "seconds_total_26": f"{sim_total:.6f}",
             "seconds_per_clip": f"{sim_total / len(rows):.6f}",
-            "relative_to_main": f"{sim_total / main_total:.6f}",
+            "relative_to_main": relative_cost(sim_total, main_total),
             "notes": f"{MODEL_NAME}; device={device}; local cached model",
         },
         {
             "scenario": "sim_like_plus_low_dsp",
             "seconds_total_26": f"{sim_plus_low_total:.6f}",
             "seconds_per_clip": f"{sim_plus_low_total / len(rows):.6f}",
-            "relative_to_main": f"{sim_plus_low_total / main_total:.6f}",
+            "relative_to_main": relative_cost(sim_plus_low_total, main_total),
             "notes": "embedding extraction plus enhanced low-DSP feature extraction",
         },
     ]
@@ -404,12 +425,12 @@ def main() -> None:
         "",
         "## Agreement With Main Metric",
         "",
-        "| candidate | Pearson | Spearman | MAE | top5 | bottom5 | notes |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        "| candidate | Pearson | Spearman | Kendall | pairwise acc. | MAE | top5 | bottom5 | notes |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for row in top:
         lines.append(
-            f"| `{row['candidate']}` | {row['pearson']} | {row['spearman']} | {row['mae']} | {row['top5_overlap']} | {row['bottom5_overlap']} | {row['notes']} |"
+            f"| `{row['candidate']}` | {row['pearson']} | {row['spearman']} | {row['kendall_tau_b']} | {row['pairwise_accuracy']} | {row['mae']} | {row['top5_overlap']} | {row['bottom5_overlap']} | {row['notes']} |"
         )
     lines.extend(
         [
@@ -432,6 +453,8 @@ def main() -> None:
             "- Raw centroid SIM-like cosine scores do not fit the current main metric on this dataset.",
             "- The useful neural signal is the classifier/logit side of the same wav2vec2 model, especially when combined with SIM-like margin and low-DSP features.",
             "- This is still much cheaper than the current full main metric because it avoids Whisper ASR, but it is more expensive than pure low-DSP features.",
+            "- The strongest candidate reuses the same SER model family as the teacher. Its agreement is teacher replication, not independent perceptual validation.",
+            "- Leave-dataset-out still holds out only a test-set type; both sets share Parler-TTS and the same speaker, so no cross-system generalization is established.",
         ]
     )
     (OUTPUT_DIR / "sim_like_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

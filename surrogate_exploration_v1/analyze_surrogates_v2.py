@@ -72,7 +72,7 @@ MEDIUM_FEATURES = {
     "ser_emotion_component": ["emotion_component_0_1"],
     "ser_plus_dsp": ["emotion_component_0_1", "prosody_fit_light", "rate_fit", "text_ease"],
     "asr_component_only": ["intelligibility_component_0_1"],
-    "asr_ser_components": ["intelligibility_component_0_1", "emotion_component_0_1", "prosody_fit_component_0_1"],
+    "asr_ser_components": ["intelligibility_component_0_1", "emotion_component_0_1", "quality_component_0_1"],
 }
 
 
@@ -123,6 +123,42 @@ def pearson(x: list[float], y: list[float]) -> float:
 
 def spearman(x: list[float], y: list[float]) -> float:
     return pearson(rankdata(x), rankdata(y))
+
+
+def kendall_tau_b(x: list[float], y: list[float]) -> float:
+    concordant = discordant = ties_x = ties_y = 0
+    for i in range(len(x)):
+        for j in range(i + 1, len(x)):
+            dx = x[i] - x[j]
+            dy = y[i] - y[j]
+            if dx == 0 and dy == 0:
+                continue
+            if dx == 0:
+                ties_x += 1
+            elif dy == 0:
+                ties_y += 1
+            elif dx * dy > 0:
+                concordant += 1
+            else:
+                discordant += 1
+    denom = math.sqrt((concordant + discordant + ties_x) * (concordant + discordant + ties_y))
+    return (concordant - discordant) / denom if denom else math.nan
+
+
+def pairwise_ranking_accuracy(candidate: list[float], target: list[float]) -> float:
+    correct = total = 0
+    for i in range(len(candidate)):
+        for j in range(i + 1, len(candidate)):
+            target_delta = target[i] - target[j]
+            if target_delta == 0:
+                continue
+            pred_delta = candidate[i] - candidate[j]
+            total += 1
+            if pred_delta * target_delta > 0:
+                correct += 1
+            elif pred_delta == 0:
+                correct += 0.5
+    return correct / total if total else math.nan
 
 
 def topk_overlap(candidate: list[float], target: list[float], k: int, largest: bool = True) -> float:
@@ -197,9 +233,8 @@ def load_scored_components() -> dict[tuple[str, str], dict[str, float]]:
             for row in csv.DictReader(handle):
                 out[(dataset_name, row["id"])] = {
                     "intelligibility_component_0_1": parse_float(row, "intelligibility_component_0_1"),
-                    "naturalness_component_0_1": parse_float(row, "naturalness_component_0_1"),
+                    "quality_component_0_1": parse_float(row, "quality_component_0_1"),
                     "emotion_component_0_1": parse_float(row, "emotion_component_0_1"),
-                    "prosody_fit_component_0_1": parse_float(row, "prosody_fit_component_0_1"),
                 }
     return out
 
@@ -232,6 +267,8 @@ def evaluate(name: str, preds: list[float], target: list[float], cost_tier: str,
         "ingredients": ingredients,
         "pearson": f"{pearson(preds, target):.6f}",
         "spearman": f"{spearman(preds, target):.6f}",
+        "kendall_tau_b": f"{kendall_tau_b(preds, target):.6f}",
+        "pairwise_accuracy": f"{pairwise_ranking_accuracy(preds, target):.6f}",
         "mae": f"{mean(errors):.6f}",
         "rmse": f"{math.sqrt(mean(error * error for error in errors)):.6f}",
         "top3_overlap": f"{topk_overlap(preds, target, min(3, len(target))):.6f}",

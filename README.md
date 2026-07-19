@@ -6,9 +6,9 @@ using it later as the target for surrogate metric search.
 The repository contains:
 
 - a lightweight emotional TTS generation script using Parler-TTS;
-- automatic metric scripts for intelligibility, acoustic quality, emotion, and
+- automatic metric scripts for intelligibility, acoustic sanity, emotion, and
   prosody;
-- a `0-1` composite main metric;
+- a vector-first provisional teacher and an experimental `0-1` scalar;
 - two reproducible experiment outputs with generated audio.
 
 ## Repository Layout
@@ -39,20 +39,18 @@ TTS-Benchmark/
   requirements-optional.txt
 ```
 
-## Main Metric
+## Main Metric (Provisional Teacher V2)
 
-The current main metric is a normalized `0-1` composite score:
+The primary output is the component vector `(I, Q, E, prosody diagnostics,
+sanity flags)`. A normalized scalar is retained only as a provisional target for
+experiments:
 
 ```text
-I = 0.80 * (1 - WER) + 0.20 * (1 - CER)
-Q = (naturalness_proxy_1_5 - 1) / 4
-E = 0.70 * target_emotion_prob + 0.30 * target_emotion_match
-P = 1 - abs(prosody_activity - target_prosody) / tolerance
-
-raw = 0.45 * I + 0.15 * Q + 0.30 * E + 0.10 * P
-gate = 0.35 + 0.65 * I
-
-main_metric = raw * gate
+I = 1 - normalized_WER
+E = target_emotion_probability
+with learned MOS: provisional_teacher_v2 = 0.55*I + 0.35*E + 0.10*Q
+without learned MOS: provisional_teacher_v2 = (0.55*I + 0.35*E) / 0.90
+ranking_eligible = I >= 0.70 and acoustic_sanity_score >= 0.50
 ```
 
 Details are in:
@@ -170,21 +168,20 @@ experiments/boundary_metric_v1/inputs/emotion_boundary_cases.csv
 
 ## Future Works
 
-The current composite main metric should be treated as a reference target for
-later surrogate metric search. A useful next step is to fit one or more
-low-compute surrogate metrics against `main_metric_0_1`, then select candidates
-by ranking agreement, correlation, and boundary-case robustness.
+The current scalar is not human-grounded truth. It is a provisional teacher for
+pipeline validation and surrogate research. Current surrogate experiments are
+under `surrogate_exploration_v1`; they report LOOCV and leave-dataset-out
+agreement, Kendall tau, pairwise accuracy, top/bottom-k overlap, MAE, and cost.
 
 Candidate surrogate directions:
 
 - ASR-light features such as duration, speech rate, silence ratio, and ASR
   confidence;
-- acoustic features such as loudness, spectral flatness, pitch/energy dynamics,
+- acoustic features such as loudness, spectral flatness, semitone pitch/energy dynamics,
   mel distance, or multi-resolution STFT distance;
 - lightweight speaker or emotion embeddings;
 - codec-token likelihood/SIM if the TTS model exposes codec tokens or logits.
 
-The main metric itself is also provisional. If a stronger evaluation method is
-added later, such as a better ASR model, a learned MOS predictor, multiple
-emotion/style models, or a small human calibration set, the main metric should
-be updated and the surrogate search should be rerun against the new reference.
+Highest-priority work is a human-rated, multi-system calibration set; learned
+MOS/defect models; heterogeneous ASR and SER models; and a fully held-out TTS
+system test. Any teacher update requires rerunning the surrogate search.

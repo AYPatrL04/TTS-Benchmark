@@ -1,12 +1,12 @@
-candidate,cost_tier,ingredients,pearson,spearman,mae,rmse,top3_overlap,top5_overlap,bottom5_overlap,notes
-ridge_sim_ser_plus_low_dsp_loo,medium_neural,sim_ser_target_prob+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.943748,0.928205,0.039488,0.051260,0.666667,0.800000,0.800000,LOOCV ridge
-lodo_sim_ser_plus_low_dsp,medium_neural,sim_ser_target_prob+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.720266,0.739272,0.072021,0.114409,0.666667,0.600000,0.600000,leave-one-dataset-out
-sim_ser_target_prob,medium_neural,same model classifier target probability,0.745731,0.737436,0.275427,0.365930,0.666667,0.800000,0.600000,
-ridge_sim_plus_low_dsp_loo,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.473116,0.402393,0.108157,0.155800,0.000000,0.000000,0.600000,LOOCV ridge
-lodo_sim_plus_low_dsp,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.344402,0.333655,0.143883,0.193432,0.666667,0.600000,0.400000,leave-one-dataset-out
-ridge_sim_centroid_loo,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_target_rank_loo+sim_target_softmax_loo+sim_pairwise_consistency,0.002307,0.029060,0.148841,0.192662,0.000000,0.200000,0.200000,LOOCV ridge
-sim_target_rank_loo,medium_neural,rank of target centroid among emotion centroids,-0.187193,-0.224281,0.352311,0.429945,0.000000,0.200000,0.000000,
-sim_target_cos_loo,medium_neural,wav2vec2 embedding cosine to target-emotion centroid,-0.272174,-0.245812,0.212431,0.260716,0.000000,0.000000,0.200000,
-sim_target_softmax_loo,medium_neural,softmax over emotion centroid cosine similarities,-0.319995,-0.343590,0.528895,0.552258,0.000000,0.000000,0.000000,
-sim_target_margin_loo,medium_neural,target centroid cosine minus nearest non-target centroid,-0.386861,-0.381197,0.308006,0.349619,0.000000,0.200000,0.000000,
-sim_pairwise_consistency,medium_neural,same-emotion pairwise embedding similarity minus different-emotion similarity,-0.421389,-0.483077,0.324861,0.392172,0.000000,0.000000,0.000000,
+candidate,cost_tier,ingredients,pearson,spearman,kendall_tau_b,pairwise_accuracy,mae,rmse,top3_overlap,top5_overlap,bottom5_overlap,notes
+ridge_sim_ser_plus_low_dsp_loo,medium_neural,sim_ser_target_prob+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.956729,0.923419,0.778462,0.889231,0.030452,0.045027,0.666667,0.800000,0.600000,LOOCV ridge
+sim_ser_target_prob,medium_neural,same model classifier target probability,0.888542,0.877607,0.747692,0.873846,0.258240,0.347192,0.666667,0.800000,0.600000,
+lodo_sim_ser_plus_low_dsp,medium_neural,sim_ser_target_prob+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.848784,0.822946,0.667731,0.830769,0.045037,0.091015,0.333333,0.800000,0.600000,leave-one-dataset-out
+ridge_sim_plus_low_dsp_loo,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.246675,0.330598,0.212308,0.606154,0.129734,0.202863,0.000000,0.000000,0.200000,LOOCV ridge
+lodo_sim_plus_low_dsp,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_pairwise_consistency+target_style_fit_v1+prosody_fit_light+rate_fit+text_ease,0.371043,0.302891,0.229416,0.600000,0.141363,0.188710,0.333333,0.600000,0.400000,leave-one-dataset-out
+ridge_sim_centroid_loo,medium_neural,sim_target_cos_loo+sim_target_margin_loo+sim_target_rank_loo+sim_target_softmax_loo+sim_pairwise_consistency,0.072682,0.169231,0.120000,0.560000,0.135550,0.198558,0.000000,0.000000,0.200000,LOOCV ridge
+sim_target_cos_loo,medium_neural,wav2vec2 embedding cosine to target-emotion centroid,-0.261845,-0.158291,-0.101538,0.449231,0.205940,0.254877,0.000000,0.000000,0.200000,
+sim_target_rank_loo,medium_neural,rank of target centroid among emotion centroids,-0.192955,-0.192190,-0.149146,0.435385,0.353694,0.433224,0.333333,0.200000,0.200000,
+sim_target_softmax_loo,medium_neural,softmax over emotion centroid cosine similarities,-0.243915,-0.241026,-0.187692,0.406154,0.535562,0.558172,0.000000,0.000000,0.200000,
+sim_target_margin_loo,medium_neural,target centroid cosine minus nearest non-target centroid,-0.357636,-0.353846,-0.255385,0.372308,0.311305,0.354611,0.333333,0.200000,0.000000,
+sim_pairwise_consistency,medium_neural,same-emotion pairwise embedding similarity minus different-emotion similarity,-0.581873,-0.604103,-0.427692,0.286154,0.332547,0.405849,0.000000,0.000000,0.000000,
